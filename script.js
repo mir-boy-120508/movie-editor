@@ -82,18 +82,50 @@ function clipStartTime(id) {
   return 0;
 }
 
+// 改善点: タイムアウト（5秒）付きでメタデータ読み込みのフリーズを防止
 function loadMediaDuration(url, type) {
   return new Promise((resolve, reject) => {
     const element = document.createElement(type);
     element.preload = "metadata";
     element.src = url;
-    element.onloadedmetadata = () => resolve(element.duration);
-    element.onerror = () => reject(new Error("メディアを読み込めませんでした"));
+
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("読み込みがタイムアウトしました。"));
+    }, 5000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      element.onloadedmetadata = null;
+      element.onerror = null;
+    }
+
+    element.onloadedmetadata = () => {
+      cleanup();
+      resolve(element.duration);
+    };
+
+    element.onerror = () => {
+      cleanup();
+      reject(new Error("メディアを読み込めませんでした。"));
+    };
   });
 }
 
+// 改善点: MIMEタイプだけでなく拡張子でも動画かどうか判定する関数
+function isVideoFile(file) {
+  if (file.type && file.type.startsWith("video/")) return true;
+  const ext = file.name.split(".").pop().toLowerCase();
+  return ["mp4", "mov", "webm", "mkv", "avi", "m4v", "wmv"].includes(ext);
+}
+
 async function addVideos(fileList) {
-  const files = [...fileList].filter((file) => file.type.startsWith("video/"));
+  const files = [...fileList].filter(isVideoFile);
+
+  if (files.length === 0 && fileList.length > 0) {
+    alert("選択されたファイルは動画ファイルとして認識されませんでした。");
+    return;
+  }
 
   for (const file of files) {
     const url = URL.createObjectURL(file);
@@ -110,7 +142,7 @@ async function addVideos(fileList) {
       });
     } catch (error) {
       URL.revokeObjectURL(url);
-      alert(`${file.name} を読み込めませんでした。非対応の形式（HEVCやMOV等）の可能性があります。`);
+      alert(`${file.name} を読み込めませんでした。\n（非対応のコーデックや破損している可能性があります）`);
       console.error(error);
     }
   }
@@ -137,14 +169,13 @@ async function addBgm(file) {
   }
 }
 
-// 修正点: 動画ソース切替・シーク時の読み込み処理を強化
 function loadCurrentClip(found) {
   if (!found) return;
 
   if (currentClipId !== found.clip.id) {
     video.src = found.clip.url;
     currentClipId = found.clip.id;
-    video.load(); // 明示的に動画データを読み込み開始
+    video.load();
   }
 
   if (Math.abs(video.currentTime - found.localTime) > 0.05) {
@@ -184,7 +215,6 @@ function drawFrame() {
   dropHint.classList.toggle("hidden", hasVideo);
   if (!hasVideo) return;
 
-  // 動画データの準備（readyState >= 2: HAVE_CURRENT_DATA）ができている場合に描画
   if (video.readyState >= 2) {
     const videoWidth = video.videoWidth || 16;
     const videoHeight = video.videoHeight || 9;
@@ -549,6 +579,7 @@ $("#export-btn").addEventListener("click", () => alert("MP4書き出し機能は
 ["dragenter", "dragover"].forEach((eventName) => {
   previewStage.addEventListener(eventName, (event) => {
     event.preventDefault();
+    event.stopPropagation();
     previewStage.classList.add("drag-active");
   });
 });
@@ -556,6 +587,7 @@ $("#export-btn").addEventListener("click", () => alert("MP4書き出し機能は
 ["dragleave", "drop"].forEach((eventName) => {
   previewStage.addEventListener(eventName, (event) => {
     event.preventDefault();
+    event.stopPropagation();
     previewStage.classList.remove("drag-active");
   });
 });
@@ -564,7 +596,6 @@ previewStage.addEventListener("drop", (event) => {
   if (event.dataTransfer.files.length) addVideos(event.dataTransfer.files);
 });
 
-// 修正点: 動画読み込み・シーク完了時のイベントハンドラを網羅・補強
 video.addEventListener("loadedmetadata", drawFrame);
 video.addEventListener("loadeddata", drawFrame);
 video.addEventListener("canplay", drawFrame);
