@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>シンプル動画編集</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="logo">シンプル動画編集</div>
+    <div class="header-actions">
+      <label class="btn btn-secondary" for="video-input">
+        動画を追加
+        <input id="video-input" type="file" accept="video/*" multiple hidden>
+      </label>
+      <label class="btn btn-secondary" for="bgm-input">
+        BGMを追加
+        <input id="bgm-input" type="file" accept="audio/*" hidden>
+      </label>
+      <button id="export-btn" class="btn btn-primary">書き出し（開発中）</button>
+    </div>
+  </header>
+
+  <main class="app-main">
+    <section class="preview-panel">
+      <div id="preview-stage" class="preview-stage">
+        <video id="preview-video" muted playsinline></video>
+        <canvas id="preview-canvas" width="960" height="540"></canvas>
+        <div id="drop-hint" class="drop-hint">
+          <strong>ここに動画をドラッグ＆ドロップ</strong>
+          <span>または上の「動画を追加」から選択</span>
+        </div>
+      </div>
+
+      <div class="preview-controls">
+        <button id="play-btn" class="btn btn-icon" aria-label="再生">▶</button>
+        <span id="time-display">00:00.0 / 00:00.0</span>
+        <input id="seek-bar" type="range" min="0" max="1000" value="0">
+      </div>
+    </section>
+
+    <aside class="side-panel">
+      <h2>テロップ</h2>
+      <button id="add-telop-btn" class="btn btn-secondary btn-block">＋ テロップを追加</button>
+      <div id="telop-list" class="telop-list"></div>
+
+      <div id="telop-editor" class="telop-editor hidden">
+        <label>
+          テキスト
+          <textarea id="telop-text" rows="3"></textarea>
+        </label>
+
+        <div class="two-columns">
+          <label>
+            開始（秒）
+            <input id="telop-start" type="number" min="0" step="0.1">
+          </label>
+          <label>
+            終了（秒）
+            <input id="telop-end" type="number" min="0" step="0.1">
+          </label>
+        </div>
+
+        <label>
+          位置
+          <select id="telop-position">
+            <option value="top">上</option>
+            <option value="center" selected>中央</option>
+            <option value="bottom">下</option>
+          </select>
+        </label>
+
+        <label>
+          文字色
+          <input id="telop-color" type="color" value="#ffffff">
+        </label>
+
+        <label>
+          文字サイズ
+          <input id="telop-size" type="range" min="16" max="120" value="48">
+        </label>
+
+        <button id="delete-telop-btn" class="btn btn-danger btn-block">このテロップを削除</button>
+      </div>
+    </aside>
+
+    <section class="timeline-panel">
+      <div class="timeline-toolbar">
+        <button id="split-btn" class="btn btn-icon">✂ 再生位置でカット</button>
+        <button id="delete-clip-btn" class="btn btn-icon">🗑 選択した動画を削除</button>
+        <label class="zoom-control">
+          拡大
+          <input id="zoom-slider" type="range" min="20" max="200" value="60">
+        </label>
+      </div>
+
+      <div id="timeline-scroll" class="timeline-scroll">
+        <div id="timeline-ruler" class="timeline-ruler"></div>
+        <div id="timeline-playhead" class="timeline-playhead"></div>
+
+        <div class="track-row">
+          <div class="track-label">映像</div>
+          <div id="video-track" class="track-lane"></div>
+        </div>
+
+        <div class="track-row">
+          <div class="track-label">テロップ</div>
+          <div id="telop-track" class="track-lane"></div>
+        </div>
+
+        <div class="track-row">
+          <div class="track-label">BGM</div>
+          <div id="bgm-track" class="track-lane"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
