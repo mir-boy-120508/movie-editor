@@ -1,24 +1,35 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>シンプル動画編集</title>
+  <title>高度Web動画エディタ Pro</title>
+  <link rel="manifest" href="manifest.json">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="app-header">
-    <div class="logo">シンプル動画編集</div>
+    <div class="logo">🎬 Studio Pro Web</div>
+    
     <div class="header-actions">
-      <label class="btn btn-secondary" for="video-input">
-        動画を追加
-        <input id="video-input" type="file" accept="video/*" multiple hidden>
+      <label class="btn btn-secondary">
+        📁 メディア追加
+        <input id="media-input" type="file" accept="video/*,audio/*,image/*,.mp4,.mov,.webm,.avi,.mkv,.gif,.png,.jpg,.jpeg,.svg" multiple hidden>
       </label>
-      <label class="btn btn-secondary" for="bgm-input">
-        BGMを追加
-        <input id="bgm-input" type="file" accept="audio/*" hidden>
+
+      <button id="save-proj-btn" class="btn btn-secondary" title="Ctrl+S">💾 保存</button>
+      <label class="btn btn-secondary">
+        📂 開く
+        <input id="load-proj-input" type="file" accept=".json" hidden>
       </label>
-      <button id="export-btn" class="btn btn-primary">書き出し（開発中）</button>
+
+      <button id="theme-toggle-btn" class="btn btn-icon" title="テーマ切り替え">🌙</button>
+      <select id="lang-select" class="select-compact">
+        <option value="ja">日本語</option>
+        <option value="en">English</option>
+      </select>
+
+      <button id="export-btn" class="btn btn-primary">📤 書き出し</button>
     </div>
   </header>
 
@@ -26,73 +37,202 @@
     <section class="preview-panel">
       <div id="preview-stage" class="preview-stage">
         <video id="preview-video" muted playsinline></video>
-        <canvas id="preview-canvas" width="960" height="540"></canvas>
+        <canvas id="preview-canvas" width="3840" height="2160"></canvas>
         <div id="drop-hint" class="drop-hint">
-          <strong>ここに動画をドラッグ＆ドロップ</strong>
-          <span>または上の「動画を追加」から選択</span>
+          <strong>ここに動画・画像・音声ファイルをドラッグ＆ドロップ</strong>
+          <span>4K / 60fps / HDR素材・各種フォーマット対応</span>
         </div>
       </div>
 
       <div class="preview-controls">
-        <button id="play-btn" class="btn btn-icon" aria-label="再生">▶</button>
-        <span id="time-display">00:00.0 / 00:00.0</span>
+        <div class="control-group">
+          <button id="btn-prev-frame" class="btn btn-icon" title="コマ戻し">⏮</button>
+          <button id="play-btn" class="btn btn-icon btn-main-play" title="再生/一時停止 (Space)">▶</button>
+          <button id="btn-stop" class="btn btn-icon" title="停止">⏹</button>
+          <button id="btn-next-frame" class="btn btn-icon" title="コマ送り">⏭</button>
+          <button id="btn-loop" class="btn btn-icon" title="ループ再生">🔁</button>
+        </div>
+
+        <span id="time-display">00:00:00.00 / 00:00:00.00 (0f)</span>
         <input id="seek-bar" type="range" min="0" max="1000" value="0">
+
+        <div class="control-group">
+          <select id="speed-select" class="select-compact" title="再生速度">
+            <option value="0.25">0.25x (スロー)</option>
+            <option value="0.5">0.5x</option>
+            <option value="1.0" selected>1.0x (標準)</option>
+            <option value="1.5">1.5x</option>
+            <option value="2.0">2.0x (倍速)</option>
+          </select>
+
+          <button id="btn-mute" class="btn btn-icon">🔊</button>
+          <input id="master-volume" type="range" min="0" max="1" step="0.05" value="1" style="width: 60px;">
+
+          <button id="fullscreen-btn" class="btn btn-icon" title="フルスクリーン">⛶</button>
+        </div>
       </div>
     </section>
 
     <aside class="side-panel">
-      <h2>テロップ</h2>
-      <button id="add-telop-btn" class="btn btn-secondary btn-block">＋ テロップを追加</button>
-      <div id="telop-list" class="telop-list"></div>
+      <div class="tab-header">
+        <button class="tab-btn active" data-tab="tab-inspector">属性</button>
+        <button class="tab-btn" data-tab="tab-telop">テロップ</button>
+        <button class="tab-btn" data-tab="tab-effects">エフェクト</button>
+        <button class="tab-btn" data-tab="tab-transitions">転換</button>
+      </div>
 
-      <div id="telop-editor" class="telop-editor hidden">
-        <label>
-          テキスト
-          <textarea id="telop-text" rows="3"></textarea>
-        </label>
+      <div id="tab-inspector" class="tab-content active">
+        <h3>クリップ設定</h3>
+        <div id="clip-inspector-empty" class="panel-empty">タイムラインでクリップを選択してください</div>
+        
+        <div id="clip-inspector-form" class="hidden">
+          <label>クリップ名: <input id="insp-clip-name" type="text"></label>
+          <div class="two-columns">
+            <label>クリップ色: <input id="insp-clip-color" type="color"></label>
+            <label>音量: <input id="insp-clip-volume" type="range" min="0" max="2" step="0.05"></label>
+          </div>
+          
+          <label><input id="insp-clip-mute" type="checkbox"> ミュート</label>
+          
+          <h4>オーディオフェード</h4>
+          <div class="two-columns">
+            <label>イン(秒): <input id="insp-fade-in" type="number" step="0.1" min="0"></label>
+            <label>アウト(秒): <input id="insp-fade-out" type="number" step="0.1" min="0"></label>
+          </div>
 
-        <div class="two-columns">
-          <label>
-            開始（秒）
-            <input id="telop-start" type="number" min="0" step="0.1">
+          <h4>変形・トリミング</h4>
+          <div class="two-columns">
+            <label>回転: 
+              <select id="insp-transform-rotate">
+                <option value="0">0°</option>
+                <option value="90">90°</option>
+                <option value="180">180°</option>
+                <option value="270">270°</option>
+              </select>
+            </label>
+            <label>反転: 
+              <select id="insp-transform-flip">
+                <option value="none">なし</option>
+                <option value="horizontal">左右反転</option>
+                <option value="vertical">上下反転</option>
+              </select>
+            </label>
+          </div>
+          <label><input id="insp-crop-enable" type="checkbox"> クロップ有効</label>
+        </div>
+      </div>
+
+      <div id="tab-telop" class="tab-content">
+        <h3>テロップ追加・編集</h3>
+        <button id="add-telop-btn" class="btn btn-secondary btn-block">＋ 新規テロップ作成</button>
+
+        <div id="telop-editor" class="telop-editor-container hidden">
+          <label>テキスト: <textarea id="telop-text" rows="2"></textarea></label>
+
+          <div class="two-columns">
+            <label>文字色: <input id="telop-color" type="color" value="#ffffff"></label>
+            <label>フォント: 
+              <select id="telop-font">
+                <option value="sans-serif">ゴシック</option>
+                <option value="serif">明朝</option>
+                <option value="cursive">手書き風</option>
+                <option value="Impact">Impact</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="two-columns">
+            <label>サイズ: <input id="telop-size" type="range" min="12" max="200" value="48"></label>
+            <label>回転: <input id="telop-rotation" type="range" min="-180" max="180" value="0"></label>
+          </div>
+
+          <div class="form-group-title">スタイル・装飾</div>
+          <div class="two-columns">
+            <label>縁取り色: <input id="telop-stroke-color" type="color" value="#000000"></label>
+            <label>縁太さ: <input id="telop-stroke-width" type="range" min="0" max="20" value="4"></label>
+          </div>
+          <div class="two-columns">
+            <label>背景色: <input id="telop-bg-color" type="color" value="#000000"></label>
+            <label>背景不透明度: <input id="telop-bg-alpha" type="range" min="0" max="1" step="0.1" value="0.5"></label>
+          </div>
+          <div class="two-columns">
+            <label>影色: <input id="telop-shadow-color" type="color" value="#000000"></label>
+            <label>影ぼかし: <input id="telop-shadow-blur" type="range" min="0" max="30" value="5"></label>
+          </div>
+
+          <div class="form-group-title">スタイルスタイル</div>
+          <div class="style-buttons">
+            <label><input id="telop-bold" type="checkbox"> 太字</label>
+            <label><input id="telop-italic" type="checkbox"> 斜体</label>
+            <label><input id="telop-underline" type="checkbox"> 下線</label>
+          </div>
+
+          <label>配置揃え: 
+            <select id="telop-align">
+              <option value="left">左揃え</option>
+              <option value="center" selected>中央揃え</option>
+              <option value="right">右揃え</option>
+            </select>
           </label>
-          <label>
-            終了（秒）
-            <input id="telop-end" type="number" min="0" step="0.1">
+
+          <label>アニメーション: 
+            <select id="telop-anim">
+              <option value="none">なし</option>
+              <option value="fade">フェードイン</option>
+              <option value="pop">ポップ</option>
+              <option value="slide">スライド</option>
+              <option value="typing">タイピング</option>
+            </select>
           </label>
         </div>
+      </div>
 
-        <label>
-          位置
-          <select id="telop-position">
-            <option value="top">上</option>
-            <option value="center" selected>中央</option>
-            <option value="bottom">下</option>
+      <div id="tab-effects" class="tab-content">
+        <h3>エフェクト / 調整</h3>
+        <div class="effect-sliders">
+          <label>明るさ: <input id="fx-brightness" type="range" min="0" max="200" value="100"></label>
+          <label>コントラスト: <input id="fx-contrast" type="range" min="0" max="200" value="100"></label>
+          <label>彩度: <input id="fx-saturate" type="range" min="0" max="200" value="100"></label>
+          <label>モノクロ: <input id="fx-grayscale" type="range" min="0" max="100" value="0"></label>
+          <label>セピア: <input id="fx-sepia" type="range" min="0" max="100" value="0"></label>
+          <label>ブラー: <input id="fx-blur" type="range" min="0" max="20" value="0"></label>
+          <button id="fx-reset-btn" class="btn btn-secondary btn-block">エフェクトリセット</button>
+        </div>
+      </div>
+
+      <div id="tab-transitions" class="tab-content">
+        <h3>トランジション設定</h3>
+        <label>画面切り替え効果:
+          <select id="transition-type">
+            <option value="none">なし</option>
+            <option value="fade">フェード</option>
+            <option value="crossfade">クロスフェード</option>
+            <option value="slide">スライド</option>
+            <option value="wipe">ワイプ</option>
+            <option value="zoom">ズーム</option>
+            <option value="dissolve">ディゾルブ</option>
           </select>
         </label>
-
-        <label>
-          文字色
-          <input id="telop-color" type="color" value="#ffffff">
-        </label>
-
-        <label>
-          文字サイズ
-          <input id="telop-size" type="range" min="16" max="120" value="48">
-        </label>
-
-        <button id="delete-telop-btn" class="btn btn-danger btn-block">このテロップを削除</button>
+        <label>時間(秒): <input id="transition-duration" type="number" step="0.1" value="0.5" min="0.1" max="3"></label>
       </div>
     </aside>
 
     <section class="timeline-panel">
       <div class="timeline-toolbar">
-        <button id="split-btn" class="btn btn-icon">✂ 再生位置でカット</button>
-        <button id="delete-clip-btn" class="btn btn-icon">🗑 選択した動画を削除</button>
-        <label class="zoom-control">
-          拡大
-          <input id="zoom-slider" type="range" min="20" max="200" value="60">
-        </label>
+        <button id="undo-btn" class="btn btn-icon" title="元に戻す (Ctrl+Z)">↩ Undo</button>
+        <button id="redo-btn" class="btn btn-icon" title="やり直し (Ctrl+Y)">↪ Redo</button>
+        <span class="toolbar-divider"></span>
+        <button id="split-btn" class="btn btn-icon">✂ 分割</button>
+        <button id="copy-btn" class="btn btn-icon">📋 コピー</button>
+        <button id="paste-btn" class="btn btn-icon">📌 貼り付け</button>
+        <button id="delete-btn" class="btn btn-icon btn-danger">🗑 削除</button>
+        <span class="toolbar-divider"></span>
+        <label><input id="snap-toggle" type="checkbox" checked> スナップ有効</label>
+
+        <div class="zoom-control">
+          <span>ズーム</span>
+          <input id="zoom-slider" type="range" min="10" max="200" value="50">
+        </div>
       </div>
 
       <div id="timeline-scroll" class="timeline-scroll">
@@ -100,22 +240,71 @@
         <div id="timeline-playhead" class="timeline-playhead"></div>
 
         <div class="track-row">
-          <div class="track-label">映像</div>
-          <div id="video-track" class="track-lane"></div>
+          <div class="track-label">🎥 映像 / 画像</div>
+          <div id="video-track" class="track-lane" data-track="video"></div>
         </div>
 
         <div class="track-row">
-          <div class="track-label">テロップ</div>
-          <div id="telop-track" class="track-lane"></div>
+          <div class="track-label">📝 テロップ</div>
+          <div id="telop-track" class="track-lane" data-track="telop"></div>
         </div>
 
         <div class="track-row">
-          <div class="track-label">BGM</div>
-          <div id="bgm-track" class="track-lane"></div>
+          <div class="track-label">🎵 BGM / SE</div>
+          <div id="audio-track" class="track-lane" data-track="audio"></div>
         </div>
       </div>
     </section>
   </main>
+
+  <dialog id="export-modal" class="modal">
+    <div class="modal-body">
+      <h3>📤 動画の書き出し (エクスポート)</h3>
+      <div class="form-grid">
+        <label>フォーマット:
+          <select id="exp-format">
+            <option value="mp4">MP4 (H.264)</option>
+            <option value="webm">WebM (VP9)</option>
+            <option value="gif">アニメーションGIF</option>
+          </select>
+        </label>
+
+        <label>解像度:
+          <select id="exp-res">
+            <option value="720p">720p (1280x720)</option>
+            <option value="1080p" selected>1080p フルHD (1920x1080)</option>
+            <option value="1440p">1440p 2K (2560x1440)</option>
+            <option value="4k">4K (3840x2160)</option>
+          </select>
+        </label>
+
+        <label>フレームレート:
+          <select id="exp-fps">
+            <option value="30">30 fps</option>
+            <option value="60" selected>60 fps</option>
+          </select>
+        </label>
+
+        <label>品質 / ビットレート:
+          <select id="exp-bitrate">
+            <option value="high">高画質 (大容量)</option>
+            <option value="medium" selected>標準</option>
+            <option value="low">軽量 (低画質)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="progress-area hidden" id="exp-progress-area">
+        <progress id="exp-progress" value="0" max="100"></progress>
+        <span id="exp-progress-text">レンダリング準備中...</span>
+      </div>
+
+      <div class="modal-actions">
+        <button id="exp-start-btn" class="btn btn-primary">書き出し開始</button>
+        <button id="exp-cancel-btn" class="btn btn-secondary">キャンセル</button>
+      </div>
+    </div>
+  </dialog>
 
   <script src="script.js"></script>
 </body>
